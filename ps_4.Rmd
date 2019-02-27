@@ -1,5 +1,5 @@
 ---
-title: "Problem Set 4"
+title: "Problem Set #4"
 author: "Jeff Huang"
 date: "2/26/2019"
 output: html_document
@@ -59,13 +59,13 @@ The first response of Rep came `r minute(first_rep$timestamp) - minute(first_dem
 ```{r question_2, echo=FALSE}
 elec_resp %>% 
   select(response,race_eth,final_weight) %>% 
-  filter(!race_eth %in% "[DO NOT READ] Don't know/Refused") %>% 
+  filter(race_eth != "[DO NOT READ] Don't know/Refused") %>% 
   mutate(race_eth=fct_relevel(race_eth, "White", "Black", "Hispanic", "Asian", "Other")) %>% 
   group_by(race_eth, response) %>% 
   
   summarize(total=sum(final_weight)) %>% 
   spread(key=response, value=total, fill=0) %>% 
-  mutate(all=Dem+Rep+Und+3) %>% 
+  mutate(all=Dem+Rep+Und+`3`) %>% 
   mutate(Dem=Dem/all) %>%
   mutate(Rep=Rep/all) %>%
   mutate(Und=Und/all) %>% 
@@ -75,7 +75,7 @@ elec_resp %>%
   
   gt() %>% 
     tab_header(
-      title= "Polling Results in North Carolina's 9th Congressional District (2018)",
+      title= "Polling Results - NC-9 District (2018)",
       subtitle="Poll results by race") %>% 
     tab_source_note("Source: The Upshot Live Poll Results (2018)") %>% 
       
@@ -88,7 +88,11 @@ elec_resp %>%
       ) %>%
   
     fmt_percent(columns = vars(Dem, Rep, Und),
-                decimals = 0) 
+                decimals = 0) %>% 
+
+    na_if(0) %>% 
+    fmt_missing(columns = vars(Und), rows = 4)
+
 ```
 
 ## Question 3
@@ -113,24 +117,25 @@ elec_resp %>%
 
 ## Question 4
 
-```{r question_4, echo=FALSE}
+```{r question_4, warning=FALSE, echo=FALSE}
 
 gen_resp <- elec_resp %>% 
   select(gender, response) %>% 
+  mutate(response=fct_rev(factor(response, levels=c("Dem", "Rep", "Und")))) %>% 
   group_by(gender, response) %>% 
   filter(response %in% c("Dem", "Rep", "Und")) %>%  
-  mutate(response=fct_rev(factor(response, levels=c("Dem", "Rep", "Und")))) %>% 
   summarize(count=n())
   
   ggplot(gen_resp, aes(x=gen_resp$response, y=gen_resp$count, fill=gen_resp$gender, show.legend=FALSE)) +
   geom_col() + 
   labs(
-    title="Polling Results in North Carolina's 9th District",
-    subtitle = "By Gender"
+    title="Polling Results in North Carolina's 9th District - 2018",
+    subtitle = "By Gender",
+    caption = "Source: The Upshot Live Poll Results (2018)"
   ) +
   coord_flip() +
   guides(fill=guide_legend(title="Gender")) +
-  xlab("Party") + 
+  xlab("Party Response") + 
   ylab(NULL)
 
 
