@@ -16,28 +16,51 @@ elec_resp <- read_csv(file = "ps_4_elections-poll-nc09-3.csv",
                         .default = col_character(),
                         final_weight = col_double(),
                         timestamp=col_datetime(format="%m/%d/%y %H:%M")))
+# Question 1.1
+dem_count <- elec_resp %>% 
+  # filtering for only Democratic responses
+  filter(response=="Dem") %>% 
+  count()
 
 # Question 1.2 
 rep_fav_count <- elec_resp %>% 
+  # filtering for only Republican responses
   filter(response =="Rep") %>%
   count()
 
 und_count <- elec_resp %>%
+  # filtering for only Undecided responses
   filter(response =="Und") %>% 
   count()
 
-# Question 1.4
-elec_resp %>% filter(response=="Dem") %>% count()
+# Question 1.3
+gen_diff <- elec_resp %>% 
+  # comparing the two gender variables and selecting ones that do not match
+  filter(gender!=gender_combined) %>% 
+  count()
 
-# Question 1.5
+# Question 1.4
+race_diff <- elec_resp %>% 
+  #first filter for white under race_eth
+  filter(race_eth == "White") %>% 
+  #then filter for non_white for race_eth == white
+  filter(file_race_black != "White") %>% 
+  count()
+
+
+# Question 1.5 - only goes to closest minute, no need to round
 first_rep <- elec_resp %>% 
+  # filtering for only Republican responses
   filter(response=="Rep") %>% 
+  # arranging in order of timestamp and picking the first one
   arrange(timestamp) %>% 
   head(1)
   
   
 first_dem <- elec_resp %>% 
+  # filtering for only Democratic responses
   filter(response=="Dem") %>% 
+  # arranging in order of timestamp and picking the first one
   arrange(timestamp) %>% 
   head(1) 
 
@@ -45,51 +68,64 @@ first_dem <- elec_resp %>%
 ```
 
 ## Question 1
-There were `r elec_resp %>% filter(response=="Dem") %>% count()` respondents who supported the Democratic candidate.
+There were `r dem_count` respondents who supported the Democratic candidate.
 
 There were `r rep_fav_count - und_count` more respondents who favored the Republican candidate than who were Undecided.
 
-There are two gender variables (gender and gender_combined). There are `r elec_resp %>% filter(gender!=gender_combined) %>% count()` individuals for whom these variables have different values.
+There are two gender variables (gender and gender_combined). There are `r gen_diff` individuals for whom these variables have different values.
 
-There are `r elec_resp %>% filter(race_eth == "White") %>% filter(file_race_black != "White") %>% count()` respondents listed as “White” under race_eth who are not listed as “White” under file_race_black.
+There are `r race_diff` respondents listed as “White” under race_eth who are not listed as “White” under file_race_black.
 
 The first response of Rep came `r minute(first_rep$timestamp) - minute(first_dem$timestamp)` minutes (rounded to the nearest minute) before the first response of Dem.
 
 ## Question 2
 ```{r question_2, echo=FALSE}
 elec_resp %>% 
+  # selecting the party response, race, and final_weight to weight responses
   select(response,race_eth,final_weight) %>% 
+  # filter out people who did not respond for race
   filter(race_eth != "[DO NOT READ] Don't know/Refused") %>% 
+  # handles leveling to display in the right order
   mutate(race_eth=fct_relevel(race_eth, "White", "Black", "Hispanic", "Asian", "Other")) %>% 
+  # groups the data by race, and then by response within those race categories
   group_by(race_eth, response) %>% 
   
+  # weighting - adds up weighting of each category
   summarize(total=sum(final_weight)) %>% 
+  # reorients table to display results across instead of in rows, fill=0 to handle NA
   spread(key=response, value=total, fill=0) %>% 
+  # weighting each category
   mutate(all=Dem+Rep+Und+`3`) %>% 
   mutate(Dem=Dem/all) %>%
   mutate(Rep=Rep/all) %>%
   mutate(Und=Und/all) %>% 
+  # filtering out unnecessary categories (-3 is a category that is not Dem, Rep, Und)
   select(-all, -"3") %>% 
   
+  # special command
   ungroup() %>% 
   
+  # table presentation
   gt() %>% 
+    # creates title, subtitle, and source
     tab_header(
       title= "Polling Results - NC-9 District (2018)",
       subtitle="Poll results by race") %>% 
     tab_source_note("Source: The Upshot Live Poll Results (2018)") %>% 
       
-    
+    # renames the tabel column labels
     cols_label(
       race_eth = "Race",
       Dem = "DEM.",
       Rep = "REP.",
       Und = "UND."
       ) %>%
-  
+    
+    # creates flat percentages
     fmt_percent(columns = vars(Dem, Rep, Und),
                 decimals = 0) %>% 
-
+  
+    # creates dash instead of 0% — if column is 0, formats to display as missing
     na_if(0) %>% 
     fmt_missing(columns = vars(Und), rows = 4)
 
@@ -97,19 +133,29 @@ elec_resp %>%
 
 ## Question 3
 ```{r question_3, echo=FALSE, fig.width = 7.2}
+# figure width calibrated to display long subtitle
 elec_resp %>% 
+  # selecting only the education level and the weight assigned to each response 
   select(educ,final_weight) %>% 
+  # filter out non-answers in the education level section
   filter(! educ %in% "[DO NOT READ] Refused") %>% 
+  # arranges categories to display in the correct order through levels — reversed because the coord_flip command flips the display order
   mutate(educ=fct_rev(factor(educ, levels=c("Graduate or Professional Degree", "Bachelors' degree", "Some college or trade school", "High school", "Grade school")))) %>% 
+  # groups responses by education
   group_by(educ) %>% 
   
-  
-  ggplot(aes(x=educ,y=final_weight))+
+  # graph
+  ggplot(aes(x=educ,y=final_weight)) +
+  # creates violin plot
   geom_violin() +
+  # creates scatter plot, alpha reduced to create transparent effect, no legend
   geom_jitter(aes(alpha=0.05),position=position_jitter(0.2), show.legend = FALSE) +
+  # flips the graph to display sideways
   coord_flip() +
+  # x&y labels
   xlab(NULL) +
   ylab("Weight Given to Respondent in Calculating Poll Results") + 
+  # titles
   labs(title = "More Educated Matter Less in North Carolina 9th Congressional District",
        subtitle = "Poll gives more weight to people who are less likely to participate in polls",
        caption="New York Times Upshot/Siena College 2018 live polls")
@@ -119,26 +165,39 @@ elec_resp %>%
 
 ```{r question_4, warning=FALSE, echo=FALSE}
 
+# I wanted to explore how polling responses differed by gender. I thought it would be interesting to do a bar graph to visualize the split between male and female percentages, and their respective quantities at first glance. I chose to represent the graph sideways to make comparisons of quantity easier on the eyes.
+
 gen_resp <- elec_resp %>% 
+  # selecting for gender and response
   select(gender, response) %>% 
-  mutate(response=fct_rev(factor(response, levels=c("Dem", "Rep", "Und")))) %>% 
+  # rearranging levels to display in the right order when flipped
+  mutate(response=fct_rev(factor(response, levels=c("Dem", "Rep", "Und")))) %>%
+  # want the groupings of gender and responses within them
   group_by(gender, response) %>% 
+  # filter to select for major party or undecided responses
   filter(response %in% c("Dem", "Rep", "Und")) %>%  
+  # creates the count for each category of response and gender
   summarize(count=n())
   
+  # handles graph, with fill representing the gender category 
   ggplot(gen_resp, aes(x=gen_resp$response, y=gen_resp$count, fill=gen_resp$gender, show.legend=FALSE)) +
+  # creates bar graph
   geom_col() + 
+  
+  # flips graph 
+  coord_flip() +
+   
+  # titles legend
+  guides(fill=guide_legend(title="Gender")) +
+  # major graph titles
   labs(
     title="Polling Results in North Carolina's 9th District - 2018",
     subtitle = "By Gender",
     caption = "Source: The Upshot Live Poll Results (2018)"
   ) +
-  coord_flip() +
-  guides(fill=guide_legend(title="Gender")) +
+  # x and y labels
   xlab("Party Response") + 
   ylab(NULL)
-
-
 
 
 ```
