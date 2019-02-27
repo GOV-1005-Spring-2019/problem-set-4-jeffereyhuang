@@ -1,0 +1,74 @@
+---
+title: "Problem Set 4"
+author: "Jeff Huang"
+date: "2/26/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+
+elec_resp <- read_csv(file = "ps_4_elections-poll-nc09-3.csv",
+                 col_types =  cols(
+                   .default = col_character(),
+                   turnout_scale = col_double(),
+                   turnout_score = col_double(),
+                   w_LV = col_double(),
+                   w_RV = col_double(),
+                   final_weight = col_double(),
+                   timestamp = col_datetime(format = "")))
+
+# Question 1.2 
+rep_fav_count <- elec_resp %>% 
+  filter(hrep_fav =="Favorable") %>%
+  count()
+
+und_count <- elec_resp %>%
+  filter(response =="Und") %>% 
+  count()
+
+# Question 1.4
+elec_resp %>% filter(response=="Dem") %>% count()
+
+# Question 1.5
+first_rep <- elec_resp %>% 
+  filter(response=="Rep") %>% 
+  arrange(timestamp) %>% 
+  head(1)
+  
+  
+first_dem <- elec_resp %>% 
+  filter(response=="Dem") %>% 
+  arrange(timestamp) %>% 
+  head(1) 
+
+
+```
+
+## Question 1
+There were `r elec_resp %>% filter(response=="Dem") %>% count()` respondents who supported the Democratic candidate.
+
+There were `r rep_fav_count - und_count` more respondents who favored the Republican candidate than who were Undecided.
+
+There are two gender variables (gender and gender_combined). There are `r elec_resp %>% filter(gender!=gender_combined) %>% count()` individuals for whom these variables have different values.
+
+There are `r elec_resp %>% filter(race_eth == "White") %>% filter(file_race_black != "White") %>% count()` respondents listed as “White” under race_eth who are not listed as “White” under file_race_black.
+
+The first response of Rep came `r minute(first_rep$timestamp) - minute(first_dem$timestamp)` minutes (rounded to the nearest minute) before the first response of Dem.
+
+
+```{r make_chart, echo=FALSE}
+# orig %>%
+#   select(response,educ4,final_weight) %>%
+#   filter(response %in% c("Dem","Rep","Und"), !educ4 %in% "[DO NOT READ] Don't know/Refused") %>% 
+#   group_by(educ4, response) %>% 
+#   summarize(total=sum(final_weight)) %>% 
+#   spread(response, total) %>% 
+#   mutate(all=Dem+Rep+Und) %>% 
+#   mutate(Dem=Dem/all) %>% 
+#   mutate(Rep=Rep/all) %>% 
+#   mutate(Und=Und/all) %>% 
+#   select(-all)
+```
