@@ -1,0 +1,57 @@
+---
+title: "class_02-28"
+author: "Jeff Huang"
+date: "2/28/2019"
+output: html_document
+---
+
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readxl)
+library(tidyverse)
+library(janitor)
+library(gt)
+```
+
+```{r}
+
+download.file(url='https://registrar.fas.harvard.edu/files/fas-registrar/files/class_enrollment_summary_by_term_2.28.19.xlsx', 
+              destfile='new_data.xlsx', 
+              mode='wb')
+
+download.file(url='https://registrar.fas.harvard.edu/files/fas-registrar/files/class_enrollment_summary_by_term_03.06.18.xlsx', 
+              destfile='old_data.xlsx', 
+              mode='wb')
+
+this_year <- read_xlsx("new_data.xlsx", skip=3) 
+last_year <- read_xlsx("old_data.xlsx", skip=3) 
+
+
+
+this_year <- clean_names(this_year) %>% 
+  select(course_id, course_title, course_name, u_grad) %>% 
+  filter(!is.na(course_name))
+
+last_year <- clean_names(last_year) %>% 
+  select(course_id, course_title, course_name, u_grad) %>% 
+  filter(!is.na(course_name))
+  
+fs::file_delete(c("new_data.xlsx", "old_data.xlsx"))
+
+new_classes <- anti_join(this_year, last_year, by="course_id") %>% 
+  select(course_name, course_title, u_grad) %>%
+  arrange(desc(u_grad)) %>%
+  slice(1:10) 
+  
+  gt(new_classes) %>% 
+    tab_header(title="Biggest Enrollment Decreases in Spring 2019")
+
+
+```
+
+                                                                                                    
+ Show Traceback
+Error: `path` does not exist: ‘class_enrollment_summary_by_term_03.06.18.xlsx’
+
